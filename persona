@@ -1,0 +1,451 @@
+dotnet add package Microsoft.EntityFrameworkCore
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+dotnet add package Microsoft.EntityFrameworkCore.Tools
+namespace YourNamespace.Models
+{
+    public class Cliente
+    {
+        public int Id { get; set; }
+        
+        [Required]
+        [MinLength(3)]
+        public string Nombre { get; set; }
+        
+        [Required]
+        [MinLength(3)]
+        public string Apellido { get; set; }
+        
+        [Required]
+        [MinLength(3)]
+        public string Cedula { get; set; }
+        
+        [Required]
+        [RegularExpression(@"\d{10}", ErrorMessage = "El celular debe tener 10 dígitos.")]
+        public string Celular { get; set; }
+    }
+
+    public class Factura
+    {
+        public int Id { get; set; }
+        
+        [Required]
+        [RegularExpression(@"\d{3}-\d{3}-\d{6}", ErrorMessage = "El formato del número de factura no es válido.")]
+        public string NumeroFactura { get; set; }
+        
+        [Required]
+        public decimal Total { get; set; }
+        
+        [Required]
+        public decimal TotalIva5 { get; set; }
+        
+        [Required]
+        public decimal TotalIva10 { get; set; }
+        
+        [Required]
+        [MinLength(6)]
+        public string TotalEnLetras { get; set; }
+    }
+}
+namespace YourNamespace.Repositories
+{
+    public interface IClienteRepository
+    {
+        Task<IEnumerable<Cliente>> GetAllClientesAsync();
+        Task<Cliente> GetClienteByIdAsync(int id);
+        Task AddClienteAsync(Cliente cliente);
+        Task UpdateClienteAsync(Cliente cliente);
+        Task DeleteClienteAsync(int id);
+    }
+
+    public interface IFacturaRepository
+    {
+        Task<IEnumerable<Factura>> GetAllFacturasAsync();
+        Task<Factura> GetFacturaByIdAsync(int id);
+        Task AddFacturaAsync(Factura factura);
+        Task UpdateFacturaAsync(Factura factura);
+        Task DeleteFacturaAsync(int id);
+    }
+
+    public class ClienteRepository : IClienteRepository
+    {
+        private readonly DbContext _context;
+
+        public ClienteRepository(DbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<IEnumerable<Cliente>> GetAllClientesAsync()
+        {
+            return await _context.Clientes.ToListAsync();
+        }
+
+        public async Task<Cliente> GetClienteByIdAsync(int id)
+        {
+            return await _context.Clientes.FindAsync(id);
+        }
+
+        public async Task AddClienteAsync(Cliente cliente)
+        {
+            await _context.Clientes.AddAsync(cliente);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateClienteAsync(Cliente cliente)
+        {
+            _context.Clientes.Update(cliente);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteClienteAsync(int id)
+        {
+            var cliente = await _context.Clientes.FindAsync(id);
+            if (cliente != null)
+            {
+                _context.Clientes.Remove(cliente);
+                await _context.SaveChangesAsync();
+            }
+        }
+    }
+
+    public class FacturaRepository : IFacturaRepository
+    {
+        private readonly DbContext _context;
+
+        public FacturaRepository(DbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<IEnumerable<Factura>> GetAllFacturasAsync()
+        {
+            return await _context.Facturas.ToListAsync();
+        }
+
+        public async Task<Factura> GetFacturaByIdAsync(int id)
+        {
+            return await _context.Facturas.FindAsync(id);
+        }
+
+        public async Task AddFacturaAsync(Factura factura)
+        {
+            await _context.Facturas.AddAsync(factura);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateFacturaAsync(Factura factura)
+        {
+            _context.Facturas.Update(factura);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteFacturaAsync(int id)
+        {
+            var factura = await _context.Facturas.FindAsync(id);
+            if (factura != null)
+            {
+                _context.Facturas.Remove(factura);
+                await _context.SaveChangesAsync();
+            }
+        }
+    }
+}
+namespace YourNamespace.Services
+{
+    public interface IClienteService
+    {
+        Task<IEnumerable<Cliente>> GetAllClientesAsync();
+        Task<Cliente> GetClienteByIdAsync(int id);
+        Task AddClienteAsync(Cliente cliente);
+        Task UpdateClienteAsync(Cliente cliente);
+        Task DeleteClienteAsync(int id);
+    }
+
+    public interface IFacturaService
+    {
+        Task<IEnumerable<Factura>> GetAllFacturasAsync();
+        Task<Factura> GetFacturaByIdAsync(int id);
+        Task AddFacturaAsync(Factura factura);
+        Task UpdateFacturaAsync(Factura factura);
+        Task DeleteFacturaAsync(int id);
+    }
+
+    public class ClienteService : IClienteService
+    {
+        private readonly IClienteRepository _clienteRepository;
+
+        public ClienteService(IClienteRepository clienteRepository)
+        {
+            _clienteRepository = clienteRepository;
+        }
+
+        public async Task<IEnumerable<Cliente>> GetAllClientesAsync()
+        {
+            return await _clienteRepository.GetAllClientesAsync();
+        }
+
+        public async Task<Cliente> GetClienteByIdAsync(int id)
+        {
+            return await _clienteRepository.GetClienteByIdAsync(id);
+        }
+
+        public async Task AddClienteAsync(Cliente cliente)
+        {
+            // Validations
+            if (cliente.Nombre.Length < 3 || cliente.Apellido.Length < 3 || cliente.Cedula.Length < 3)
+                throw new ArgumentException("Nombre, Apellido y Cedula deben tener al menos 3 caracteres.");
+            
+            if (!Regex.IsMatch(cliente.Celular, @"^\d{10}$"))
+                throw new ArgumentException("El celular debe tener 10 dígitos.");
+            
+            await _clienteRepository.AddClienteAsync(cliente);
+        }
+
+        public async Task UpdateClienteAsync(Cliente cliente)
+        {
+            // Validations
+            if (cliente.Nombre.Length < 3 || cliente.Apellido.Length < 3 || cliente.Cedula.Length < 3)
+                throw new ArgumentException("Nombre, Apellido y Cedula deben tener al menos 3 caracteres.");
+            
+            if (!Regex.IsMatch(cliente.Celular, @"^\d{10}$"))
+                throw new ArgumentException("El celular debe tener 10 dígitos.");
+            
+            await _clienteRepository.UpdateClienteAsync(cliente);
+        }
+
+        public async Task DeleteClienteAsync(int id)
+        {
+            await _clienteRepository.DeleteClienteAsync(id);
+        }
+    }
+
+    public class FacturaService : IFacturaService
+    {
+        private readonly IFacturaRepository _facturaRepository;
+
+        public FacturaService(IFacturaRepository facturaRepository)
+        {
+            _facturaRepository = facturaRepository;
+        }
+
+        public async Task<IEnumerable<Factura>> GetAllFacturasAsync()
+        {
+            return await _facturaRepository.GetAllFacturasAsync();
+        }
+
+        public async Task<Factura> GetFacturaByIdAsync(int id)
+        {
+            return await _facturaRepository.GetFacturaByIdAsync(id);
+        }
+
+        public async Task AddFacturaAsync(Factura factura)
+        {
+            // Validations
+            if (!Regex.IsMatch(factura.NumeroFactura, @"^\d{3}-\d{3}-\d{6}$"))
+                throw new ArgumentException("El formato del número de factura no es válido.");
+            
+            if (factura.TotalEnLetras.Length < 6)
+                throw new ArgumentException("Total en letras debe tener al menos 6 caracteres.");
+
+            await _facturaRepository.AddFacturaAsync(factura);
+        }
+
+        public async Task UpdateFacturaAsync(Factura factura)
+        {
+            // Validations
+            if (!Regex.IsMatch(factura.NumeroFactura, @"^\d{3}-\d{3}-\d{6}$"))
+                throw new ArgumentException("El formato del número de factura no es válido.");
+            
+            if (factura.TotalEnLetras.Length < 6)
+                throw new ArgumentException("Total en letras debe tener al menos 6 caracteres.");
+            
+            await _facturaRepository.UpdateFacturaAsync(factura);
+        }
+
+        public async Task DeleteFacturaAsync(int id)
+        {
+            await _facturaRepository.DeleteFacturaAsync(id);
+        }
+    }
+}
+namespace YourNamespace.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class ClientesController : ControllerBase
+    {
+        private readonly IClienteService _clienteService;
+
+        public ClientesController(IClienteService clienteService)
+        {
+            _clienteService = clienteService;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllClientes()
+        {
+            var clientes = await _clienteService.GetAllClientesAsync();
+            return Ok(clientes);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetClienteById(int id)
+        {
+            var cliente = await _clienteService.GetClienteByIdAsync(id);
+            if (cliente == null)
+                return NotFound();
+
+            return Ok(cliente);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddCliente([FromBody] Cliente cliente)
+        {
+            try
+            {
+                await _clienteService.AddClienteAsync(cliente);
+                return CreatedAtAction(nameof(GetClienteById), new { id = cliente.Id }, cliente);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateCliente(int id, [FromBody] Cliente cliente)
+        {
+            if (id != cliente.Id)
+                return BadRequest();
+
+            try
+            {
+                await _clienteService.UpdateClienteAsync(cliente);
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteCliente(int id)
+        {
+            await _clienteService.DeleteClienteAsync(id);
+            return NoContent();
+        }
+    }
+
+    [ApiController]
+    [Route("api/[controller]")]
+    public class FacturasController : ControllerBase
+    {
+        private readonly IFacturaService _facturaService;
+
+        public FacturasController(IFacturaService facturaService)
+        {
+            _facturaService = facturaService;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllFacturas()
+        {
+            var facturas = await _facturaService.GetAllFacturasAsync();
+            return Ok(facturas);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetFacturaById(int id)
+        {
+            var factura = await _facturaService.GetFacturaByIdAsync(id);
+            if (factura == null)
+                return NotFound();
+
+            return Ok(factura);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddFactura([FromBody] Factura factura)
+        {
+            try
+            {
+                await _facturaService.AddFacturaAsync(factura);
+                return CreatedAtAction(nameof(GetFacturaById), new { id = factura.Id }, factura);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateFactura(int id, [FromBody] Factura factura)
+        {
+            if (id != factura.Id)
+                return BadRequest();
+
+            try
+            {
+                await _facturaService.UpdateFacturaAsync(factura);
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteFactura(int id)
+        {
+            await _facturaService.DeleteFacturaAsync(id);
+            return NoContent();
+        }
+    }
+}
+namespace YourNamespace.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+        {
+        }
+
+        public DbSet<Cliente> Clientes { get; set; }
+        public DbSet<Factura> Facturas { get; set; }
+    }
+}
+public class Startup
+{
+    public void ConfigureServices(IServiceCollection services)
+    {
+        services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+
+        services.AddScoped<IClienteRepository, ClienteRepository>();
+        services.AddScoped<IFacturaRepository, FacturaRepository>();
+        services.AddScoped<IClienteService, ClienteService>();
+        services.AddScoped<IFacturaService, FacturaService>();
+
+        services.AddControllers();
+    }
+
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+        if (env.IsDevelopment())
+        {
+            app.UseDeveloperExceptionPage();
+        }
+
+        app.UseRouting();
+
+        app.UseEndpoints(endpoints =>
+        {
+            endpoints.MapControllers();
+        });
+    }
+}
+dotnet ef migrations add InitialCreate
+dotnet ef database update
+
